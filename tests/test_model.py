@@ -5,8 +5,7 @@ from src.model import code_check
 
 class TestCourse(unittest.TestCase):
     def setUp(self):
-        data = {}
-        self.course = Course(data, "Course Name")
+        self.course = Course()
 
     def test_course_code(self):
         self.course.set_course_code("DA4002")

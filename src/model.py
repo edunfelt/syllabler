@@ -21,14 +21,14 @@ def code_check(course_code: str):
 class Course(object):
     """Syllabler course model"""
 
-    def __init__(self, course_data: dict, swe_name: str):
+    def __init__(self):
         """
         Create new course object
-        :param course_data: dictionary in which course data should be stored
-        :param swe_name: Swedish name
         """
-        self.course_data = course_data
-        course_data["swe_name"] = swe_name
+        self.course_data = {}
+
+    def set_swe_name(self, swe_name):
+        self.course_data["swe_name"] = swe_name
 
     def get_swe_name(self):
         return self.course_data["swe_name"]
@@ -104,6 +104,12 @@ class Course(object):
     def get_eligibility(self):
         return self.course_data["eligibility"]
 
+    def set_requirements(self, requirements):
+        self.course_data["requirements"] = requirements
+
+    def get_requirements(self):
+        return self.course_data["requirements"]
+
     def set_description(self, description: str):
         self.course_data["description"] = description
 
@@ -159,8 +165,8 @@ class Course(object):
         return self.course_data["relations"]
 
     def save_course(self):
-        with open("course_fields.json", "w") as data:
-            json.dump(self.course_data, data)
+        with open("course_fields.json", "w", encoding="utf-8") as data:
+            json.dump(self.course_data, data, indent=4, ensure_ascii=False)
 
     def get_course(self):
         return self.course_data
