@@ -9,6 +9,7 @@ app = QApplication(sys.argv)
 
 class TestView(unittest.TestCase):
     """
+    Test properties of the view
     This is inspired by the following article: http://johnnado.com/pyqt-qtest-example/
     """
 
