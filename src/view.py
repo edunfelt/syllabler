@@ -20,6 +20,29 @@ def code_check(course_code: str):
         raise Exception
 
 
+def get_data(field):
+    """
+    Get data from form field
+    :param field: field to get data from
+    :return: input data
+    """
+    if isinstance(field, QLineEdit):
+        return field.text()
+    elif isinstance(field, QComboBox):
+        return field.currentText()
+    elif isinstance(field, dict):
+        data = {}
+        for key, value in field.items():
+            data[key] = get_data(value)
+        return data
+    elif isinstance(field, QSpinBox):
+        return field.value()
+    elif isinstance(field, QRadioButton):
+        return field.isChecked()
+    elif isinstance(field, QCheckBox):
+        return field.isChecked()
+
+
 class SyllablerUI(QMainWindow):
     """Syllabler UI"""
 
@@ -34,14 +57,23 @@ class SyllablerUI(QMainWindow):
         self.stack = QStackedWidget(self)  # stacked layout for multi-page form
         self.part1 = QWidget()
         self.part2 = QWidget()
+
+        self.part2_layout = QFormLayout()
+        self.part2.setLayout(self.part2_layout)
+        self.part2_part_list = QListWidget()    # list for course parts
+        self.part2_part_stack = QStackedWidget()    # form for each course part
+
         self.stack.addWidget(self.part1)
         self.stack.addWidget(self.part2)
 
         # Window properties
         self.setWindowTitle("Syllabler")
         self.setGeometry(500, 500, 600, 550)
+
+        # Keep track of UI elements
         self.buttons = {}  # store buttons in dictionary
         self.fields = {}  # store fields in dictionary
+        self.parts = 0  # count number of course parts
 
         # Add UI elements
         self.create_header()
@@ -58,7 +90,7 @@ class SyllablerUI(QMainWindow):
         header_layout = QHBoxLayout()
 
         # Title
-        title = QLabel("<h1>Basinformation (kan ej revideras)</h1>")
+        title = QLabel("<h1>Basinformation för kursplaner</h1>")
         title.setAlignment(Qt.AlignCenter)
         header_layout.addWidget(title)
         header_layout.addStretch()
@@ -192,8 +224,186 @@ class SyllablerUI(QMainWindow):
         """
         Create form page 2
         """
-        part2_layout = QFormLayout()
-        self.part2.setLayout(part2_layout)
+        part2_form = QFormLayout()
+
+        # Beskrivning
+        description = QLineEdit()
+        description.setPlaceholderText("Lista de områden som kursen behandlar")
+        self.fields["description"] = description
+        part2_form.addRow("Kursbeskrivning:", description)
+
+        # Kursmoment
+        parts_info = QHBoxLayout()
+        parts = QSpinBox()
+        self.fields["parts"] = parts
+        parts_info.addWidget(parts)
+
+        pass_all = QCheckBox()
+        pass_all.setText("Godkänt på alla delar krävs")
+        self.fields["pass_all"] = pass_all
+        parts_info.addWidget(pass_all)
+
+        weighted_grade = QCheckBox()
+        weighted_grade.setText("Slutbetyget sammanvägs")
+        self.fields["weighted"] = weighted_grade
+        parts_info.addWidget(weighted_grade)
+        part2_form.addRow("Antal delmoment:", parts_info)
+        self.part2_layout.addRow(part2_form)
+
+        course_parts = QHBoxLayout()
+        course_parts.addWidget(self.part2_part_list)
+        course_parts.addWidget(self.part2_part_stack)
+        self.part2_layout.addRow(course_parts)
+
+        # Undervisningsformer
+        teaching_forms = QHBoxLayout()
+        teaching1 = {"lectures": "Föreläsningar",
+                     "groups": "Gruppundervisning",
+                     "seminars": "Seminarier",
+                     "practice": "Övningar"}
+        teaching2 = {"projects": "Projektarbeten",
+                     "guidance": "Handledning",
+                     "excursions": "Exkursioner",
+                     "labs": "Laborationer"}
+        vert1 = QVBoxLayout()
+        vert2 = QVBoxLayout()
+        for key, value in teaching1.items():
+            item = QCheckBox()
+            item.setText(value)
+            self.fields["teaching_" + key] = item
+            vert1.addWidget(item)
+        for key, value in teaching2.items():
+            item = QCheckBox()
+            item.setText(value)
+            self.fields["teaching_" + key] = item
+            vert2.addWidget(item)
+        teaching_forms.addItem(vert1)
+        teaching_forms.addItem(vert2)
+        self.part2_layout.addRow("Undervisningsformer:", teaching_forms)
+
+        online = QComboBox()
+        online.setPlaceholderText("-- Ange undervisningsform --")
+        online.addItem("Ja")
+        online.addItem("Nej")
+        self.fields["online_course"] = online
+        self.part2_layout.addRow("Distansundervisning:", online)
+
+        # Kursdeltagande
+        mandatory = QHBoxLayout()
+        mandatory1 = QVBoxLayout()
+        mandatory2 = QVBoxLayout()
+        for key, value in teaching1.items():
+            item = QCheckBox()
+            item.setText(value)
+            self.fields["teaching_" + key] = item
+            mandatory1.addWidget(item)
+        for key, value in teaching2.items():
+            item = QCheckBox()
+            item.setText(value)
+            self.fields["teaching_" + key] = item
+            mandatory2.addWidget(item)
+        mandatory.addItem(mandatory1)
+        mandatory.addItem(mandatory2)
+        self.part2_layout.addRow("Kursdeltagande:", mandatory)
+
+        # Kompletteringsalternativ
+        completion_box = QComboBox()
+        completion_box.setPlaceholderText("-- Välj komplettering --")
+        self.fields["completion"] = completion_box
+        completion_box.addItem("Komplettering Fx till E")
+        completion_box.addItem("Komplettering Fx till A-E")
+        completion_box.addItem("Komplettering U till G")
+        completion_box.addItem("Ej komplettering Fx till E")
+        completion_box.addItem("Ej komplettering U till G")
+        self.part2_layout.addRow("Komplettering:", completion_box)
+
+        # Ej tillåtna huvudområden/kurser
+        forbidden_main = QLineEdit()
+        forbidden_main.setPlaceholderText("Huvudområde")
+        self.fields["forbidden_main"] = forbidden_main
+        self.part2_layout.addRow("Kan ej ingå i examen inom:", forbidden_main)
+
+        forbidden_courses = QLineEdit()
+        forbidden_courses.setPlaceholderText("Lista kurser här")
+        self.fields["forbidden_course"] = forbidden_courses
+        self.part2_layout.addRow("Kan ej ingå i examen med:", forbidden_courses)
+
+        # Programtillhörighet
+        program = QLineEdit()
+        program.setPlaceholderText("Utblidningsprogram")
+        self.fields["program"] = program
+        self.part2_layout.addRow("Ingår i program:", program)
+
+        # Övriga
+        relations = QComboBox()
+        relations.setPlaceholderText("-- Ange hur kursen ges --")
+        relations.addItem("Fristående")
+        relations.addItem("Ingår i program")
+        relations.addItem("Program och fristående")
+        self.fields["relations"] = relations
+        self.part2_layout.addRow("Kursen ges som:", relations)
+
+    def create_part(self):
+        """
+        Create a form for a course part
+        :return: course part form layout
+        """
+        layout = QFormLayout()
+        part_info = {}
+        # Namn
+        part_desc = QHBoxLayout()
+        part_name = QLineEdit()
+        part_name.setPlaceholderText("Namn på moment")
+        part_info["part_name"] = part_name
+        part_desc.addWidget(part_name)
+
+        # Generell information: betygsinformation, beskrivning
+        part_required = QRadioButton()
+        part_required.setText("Betygsavgörande")
+        part_info["part_required"] = part_required
+        part_desc.addWidget(part_required)
+        layout.addRow("Information:", part_desc)
+
+        # Betygsättning
+        part_grading = QComboBox()
+        part_grading.setPlaceholderText("-- Ange betygsskala --")
+        part_info["part_grading"] = part_grading
+        part_grading.addItem("AF - sjugradig")
+        part_grading.addItem("UV - tregradig")
+        part_grading.addItem("UG - tvågradig")
+        layout.addRow("Betygsskala:", part_grading)
+
+        # Högskolepoäng
+        part_credits = QLineEdit()
+        part_info["part_credits"] = part_credits
+        part_credits.setValidator(QDoubleValidator())
+        layout.addRow("Högskolepoäng:", part_credits)
+
+        # Examinationsform
+        part_exam = QComboBox()
+        part_exam.setPlaceholderText("-- Examinationsform --")
+        part_info["part_exam"] = part_exam
+        part_exam.addItem("Skriftligt prov")
+        part_exam.addItem("Muntligt prov")
+        part_exam.addItem("Skriftligt och mutligt prov")
+        part_exam.addItem("Skriftliga redovisningar")
+        part_exam.addItem("Muntliga redovisningar")
+        part_exam.addItem("Övningar")
+        part_exam.addItem("Laborationsrapporter")
+        part_exam.addItem("Rapporter från exkursioner")
+        part_exam.addItem("Praktik")
+        part_exam.addItem("Opposion på andras uppgifter")
+        part_exam.addItem("Aktivitet på seminarier")
+        layout.addRow("Examinationsform:", part_exam)
+
+        # Förväntade kunskaper
+        part_goal = QLineEdit()
+        part_goal.setPlaceholderText("Lista förväntade kunskaper")
+        part_info["part_goal"] = part_goal
+        layout.addRow("Förväntade kunskaper:", part_goal)
+
+        self.fields["part_" + str(self.parts)] = part_info
+        return layout
 
     def create_actions(self):
         """
@@ -261,10 +471,7 @@ class SyllablerUI(QMainWindow):
             self.warning("Kod")
         else:
             for name, field in self.fields.items():
-                if isinstance(field, QLineEdit):
-                    data[name] = field.text()
-                elif isinstance(field, QComboBox):
-                    data[name] = field.currentText()
+                data[name] = get_data(field)
             with open("course_fields.json", "w", encoding="utf-8") as f:
                 json.dump(data, f, indent=4, ensure_ascii=False)
 
@@ -323,3 +530,23 @@ class SyllablerUI(QMainWindow):
         else:
             self.fields["requirements"].setHidden(True)
             self.fields["requirements"].clear()
+
+    def new_part(self):
+        """
+        Method for creating required number of course parts
+        """
+        while self.parts != self.fields["parts"].value():
+            if self.parts < self.fields["parts"].value():
+                course_part = self.create_part()
+                self.part2_part_list.insertItem(self.parts, "Kursmoment " + str(self.parts + 1))
+                course_stack = QWidget()
+                course_stack.setLayout(course_part)
+                self.part2_part_stack.addWidget(course_stack)
+                self.parts += 1
+
+    def part_switch(self, part):
+        """
+        Switch between course parts in list menu
+        :param: index of course part to switch to
+        """
+        self.part2_part_stack.setCurrentIndex(part)

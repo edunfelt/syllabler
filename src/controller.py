@@ -29,3 +29,7 @@ class SyllablerCtrl:
 
         # Form part 1, särskild behörighet
         self.view.fields["eligibility"].currentIndexChanged.connect(self.view.eligibility_list)
+
+        # Form part 2, kursmoment
+        self.view.fields["parts"].valueChanged.connect(self.view.new_part)
+        self.view.part2_part_list.currentRowChanged.connect(self.view.part_switch)

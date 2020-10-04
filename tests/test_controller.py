@@ -25,6 +25,7 @@ class TestCtrl(unittest.TestCase):
         """
         Fill out form, for testing purposes
         """
+        self.syllabler_ui.fields["parts"].setValue(2)
         for name, field in self.syllabler_ui.fields.items():
             if isinstance(field, QLineEdit):
                 if name == "course_code":
@@ -34,6 +35,8 @@ class TestCtrl(unittest.TestCase):
             elif isinstance(field, QComboBox):
                 field.setCurrentIndex(1)
             elif name == "main_area_false":
+                field.setChecked(True)
+            elif isinstance(field, QCheckBox):
                 field.setChecked(True)
 
     def test_save(self):
@@ -51,7 +54,7 @@ class TestCtrl(unittest.TestCase):
         QTest.mouseClick(save_btn, Qt.LeftButton)
         self.assertTrue(os.path.exists("course_fields.json"))
         with open("course_fields.json", "r") as f:
-            self.assertEqual(len(f.readlines()), 14)
+            self.assertEqual(len(f.readlines()), 34)
         os.remove("course_fields.json")
 
     def test_clear(self):
@@ -142,3 +145,26 @@ class TestCtrl(unittest.TestCase):
         self.assertTrue(requirements.isHidden())
         eligibility_box.setCurrentIndex(0)
         self.assertFalse(requirements.isHidden())
+
+    def test_parts_add(self):
+        """
+        Test that adding parts works as expected
+        """
+        next_btn = self.syllabler_ui.buttons["Nästa"]
+        parts_box = self.syllabler_ui.fields["parts"]
+        save_btn = self.syllabler_ui.buttons["Spara"]
+
+        # Check that there are 0 parts initially
+        QTest.mouseClick(next_btn, Qt.LeftButton)
+        self.assertEqual(self.syllabler_ui.parts, 0)
+
+        # Check that adding two parts adds correct number of lines to output when saved
+        parts_box.setValue(2)
+        self.assertEqual(self.syllabler_ui.parts, 2)
+
+        self.fill_form()
+        QTest.mouseClick(save_btn, Qt.LeftButton)
+        self.assertTrue(os.path.exists("course_fields.json"))
+        with open("course_fields.json", "r") as f:
+            self.assertEqual(len(f.readlines()), 50)
+        os.remove("course_fields.json")
