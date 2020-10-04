@@ -1,6 +1,23 @@
+import json
+
 from PyQt5.QtCore import *
 from PyQt5.QtWidgets import *
 from PyQt5.QtGui import *
+
+
+def code_check(course_code: str):
+    """
+    Check if a course code is of the form XXYZZZ
+    :param course_code: Code to check
+    :return: True if course code is valid, False otherwise
+    """
+    if len(course_code) != 6:
+        raise Exception("Provided code is too short")
+
+    if not course_code[0].isupper() and course_code[1].isupper():
+        raise Exception
+    elif not course_code[2:].isdigit():
+        raise Exception
 
 
 class SyllablerUI(QMainWindow):
@@ -232,18 +249,24 @@ class SyllablerUI(QMainWindow):
         dialog.setStandardButtons(QMessageBox.Ok)
         dialog.show()
 
-    def get_data(self):
+    def save_data(self):
         """
         Method for saving current form data to json file
         :return: dictionary of all the current form data
         """
         data = {}
-        for name, field in self.fields.items():
-            if isinstance(field, QLineEdit):
-                data[name] = field.text()
-            elif isinstance(field, QComboBox):
-                data[name] = field.currentText()
-        return data
+        try:
+            code_check(self.fields["course_code"].text())
+        except Exception:
+            self.warning("Kod")
+        else:
+            for name, field in self.fields.items():
+                if isinstance(field, QLineEdit):
+                    data[name] = field.text()
+                elif isinstance(field, QComboBox):
+                    data[name] = field.currentText()
+            with open("course_fields.json", "w", encoding="utf-8") as f:
+                json.dump(data, f, indent=4, ensure_ascii=False)
 
     def reset_form(self):
         """
