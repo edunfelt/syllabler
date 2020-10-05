@@ -38,9 +38,15 @@ def get_data(field):
     elif isinstance(field, QSpinBox):
         return field.value()
     elif isinstance(field, QRadioButton):
-        return field.isChecked()
+        if field.isChecked():
+            return field.text()
+        else:
+            return ""
     elif isinstance(field, QCheckBox):
-        return field.isChecked()
+        if field.isChecked():
+            return field.text()
+        else:
+            return ""
 
 
 class SyllablerUI(QMainWindow):
@@ -57,11 +63,13 @@ class SyllablerUI(QMainWindow):
         self.stack = QStackedWidget(self)  # stacked layout for multi-page form
         self.part1 = QWidget()
         self.part2 = QWidget()
+        self.part3 = QWidget()
+        self.part3_layout = QVBoxLayout()
 
         self.part2_layout = QFormLayout()
         self.part2.setLayout(self.part2_layout)
-        self.part2_part_list = QListWidget()    # list for course parts
-        self.part2_part_stack = QStackedWidget()    # form for each course part
+        self.part2_part_list = QListWidget()  # list for course parts
+        self.part2_part_stack = QStackedWidget()  # form for each course part
 
         self.stack.addWidget(self.part1)
         self.stack.addWidget(self.part2)
@@ -257,26 +265,20 @@ class SyllablerUI(QMainWindow):
 
         # Undervisningsformer
         teaching_forms = QHBoxLayout()
-        teaching1 = {"lectures": "Föreläsningar",
-                     "groups": "Gruppundervisning",
-                     "seminars": "Seminarier",
-                     "practice": "Övningar"}
-        teaching2 = {"projects": "Projektarbeten",
-                     "guidance": "Handledning",
-                     "excursions": "Exkursioner",
-                     "labs": "Laborationer"}
+        teaching = ["teaching_Föreläsningar", "teaching_Gruppundervisning", "teaching_Seminarier", "teaching_Övningar",
+                    "teaching_Projektarbeten", "teaching_Handledning", "teaching_Exkursioner", "teaching_Laborationer"]
         vert1 = QVBoxLayout()
         vert2 = QVBoxLayout()
-        for key, value in teaching1.items():
+        for option in teaching[:4]:
             item = QCheckBox()
-            item.setText(value)
-            self.fields["teaching_" + key] = item
+            item.setText(option.lstrip("teaching_"))
+            self.fields[option] = item
             vert1.addWidget(item)
-        for key, value in teaching2.items():
+        for option in teaching[4:]:
             item = QCheckBox()
-            item.setText(value)
-            self.fields["teaching_" + key] = item
-            vert2.addWidget(item)
+            item.setText(option.lstrip("teaching_"))
+            self.fields[option] = item
+            vert1.addWidget(item)
         teaching_forms.addItem(vert1)
         teaching_forms.addItem(vert2)
         self.part2_layout.addRow("Undervisningsformer:", teaching_forms)
@@ -290,18 +292,20 @@ class SyllablerUI(QMainWindow):
 
         # Kursdeltagande
         mandatory = QHBoxLayout()
+        tasks = ["task_Föreläsningar", "task_Gruppundervisning", "task_Seminarier", "task_Övningar",
+                 "task_Projektarbeten", "task_Handledning", "task_Exkursioner", "task_Laborationer"]
         mandatory1 = QVBoxLayout()
         mandatory2 = QVBoxLayout()
-        for key, value in teaching1.items():
+        for option in tasks[:4]:
             item = QCheckBox()
-            item.setText(value)
-            self.fields["teaching_" + key] = item
+            item.setText(option.lstrip("task_"))
+            self.fields[option] = item
             mandatory1.addWidget(item)
-        for key, value in teaching2.items():
+        for option in tasks[4:]:
             item = QCheckBox()
-            item.setText(value)
-            self.fields["teaching_" + key] = item
-            mandatory2.addWidget(item)
+            item.setText(option.lstrip("task_"))
+            self.fields[option] = item
+            mandatory1.addWidget(item)
         mandatory.addItem(mandatory1)
         mandatory.addItem(mandatory2)
         self.part2_layout.addRow("Kursdeltagande:", mandatory)
@@ -342,6 +346,19 @@ class SyllablerUI(QMainWindow):
         relations.addItem("Program och fristående")
         self.fields["relations"] = relations
         self.part2_layout.addRow("Kursen ges som:", relations)
+
+    def create_part3(self, file):
+        self.stack.addWidget(self.part3)
+        part3_text = QTextEdit(self.part3)
+        part3_text.setReadOnly(True)
+        display_text = open(file)
+        part3_text.setHtml(display_text.read())
+        display_text.close()
+        self.part3_layout.addWidget(part3_text)
+        self.part3.setLayout(self.part3_layout)
+
+    def remove_part3(self):
+        self.part3_layout.removeItem(self.part3_layout.itemAt(0))
 
     def create_part(self):
         """
@@ -412,22 +429,19 @@ class SyllablerUI(QMainWindow):
         action_btns = QDialogButtonBox()
         action_btns.setStandardButtons(
             QDialogButtonBox.Apply |
-            QDialogButtonBox.Save |
             QDialogButtonBox.Discard |
             QDialogButtonBox.Close
         )
 
         # Swedish text on buttons
         action_btns.button(QDialogButtonBox.Apply).setText("Fortsätt")
-        action_btns.button(QDialogButtonBox.Save).setText("Spara")
         action_btns.button(QDialogButtonBox.Discard).setText("Rensa")
-        action_btns.button(QDialogButtonBox.Close).setText("Avsluta")
+        action_btns.button(QDialogButtonBox.Close).setText("Tillbaka")
 
         # Add buttons to dictionary
         self.buttons["Nästa"] = action_btns.button(QDialogButtonBox.Apply)
-        self.buttons["Spara"] = action_btns.button(QDialogButtonBox.Save)
         self.buttons["Rensa"] = action_btns.button(QDialogButtonBox.Discard)
-        self.buttons["Avsluta"] = action_btns.button(QDialogButtonBox.Close)
+        self.buttons["Tillbaka"] = action_btns.button(QDialogButtonBox.Close)
 
         self.main_layout.addWidget(action_btns)
 
@@ -446,7 +460,7 @@ class SyllablerUI(QMainWindow):
         )
         handbook.show()
 
-    def warning(self, name):
+    def warning(self):
         """
         Warning dialog if incompatible input
         :param name: name of field that is incorrect
@@ -454,54 +468,10 @@ class SyllablerUI(QMainWindow):
         dialog = QMessageBox(self)
         dialog.setIcon(QMessageBox.Warning)
         dialog.setWindowTitle("Felaktigt fält!")
-        dialog.setText("Fältet '" + name + "' har felaktigt värde.")
+        dialog.setText("Det finns fält med felaktiga värden.")
         dialog.setInformativeText("Se den inbyggda manualen för mer information.")
         dialog.setStandardButtons(QMessageBox.Ok)
         dialog.show()
-
-    def save_data(self):
-        """
-        Method for saving current form data to json file
-        :return: dictionary of all the current form data
-        """
-        data = {}
-        try:
-            code_check(self.fields["course_code"].text())
-        except Exception:
-            self.warning("Kod")
-        else:
-            for name, field in self.fields.items():
-                data[name] = get_data(field)
-            with open("course_fields.json", "w", encoding="utf-8") as f:
-                json.dump(data, f, indent=4, ensure_ascii=False)
-
-    def reset_form(self):
-        """
-        Method for emptying all form fields without saving
-        """
-        for name, field in self.fields.items():
-            if isinstance(field, QLineEdit):
-                field.clear()
-            elif isinstance(field, QComboBox):
-                field.setCurrentIndex(0)
-            else:
-                pass
-        self.fields["main_area_true"].setChecked(True)
-
-    def close_form(self):
-        """
-        Method for closing the form (with a warning)
-        """
-        self.close()
-
-    def switch_page(self):
-        """
-        Method for switching page in form
-        """
-        if self.stack.currentWidget() is self.part1:
-            self.stack.setCurrentIndex(1)
-        elif self.stack.currentWidget() is self.part2:
-            self.stack.setCurrentIndex(0)
 
     def main_area_switch(self):
         """
@@ -535,7 +505,7 @@ class SyllablerUI(QMainWindow):
         """
         Method for creating required number of course parts
         """
-        while self.parts != self.fields["parts"].value():
+        while self.parts < self.fields["parts"].value():    # using < here to avoid hanging if user decreases value
             if self.parts < self.fields["parts"].value():
                 course_part = self.create_part()
                 self.part2_part_list.insertItem(self.parts, "Kursmoment " + str(self.parts + 1))
@@ -550,3 +520,36 @@ class SyllablerUI(QMainWindow):
         :param: index of course part to switch to
         """
         self.part2_part_stack.setCurrentIndex(part)
+
+    def check_invalid(self, fields):
+        """
+        Check if a form field is invalid before proceeding.
+        """
+        invalid_fields = False
+        for name, field in fields.items():
+            if name == "course_code":
+                try:
+                    code_check(fields["course_code"].text())
+                except Exception:
+                    field.setStyleSheet("QLineEdit" "{ background: pink; }")
+                    invalid_fields = True
+                else:
+                    field.setStyleSheet("QLineEdit" "{ background: lightgreen; }")
+            elif name == "forbidden_main" or name == "forbidden_course" or name == "program":
+                field.setStyleSheet("QLineEdit" "{ background: lightgreen; }")
+            elif name == "requirements" and self.fields["eligibility"] != "Särskild behörighet":
+                field.setStyleSheet("QLineEdit" "{ background: lightgreen; }")
+            elif isinstance(field, QLineEdit) and field.text() == "":
+                field.setStyleSheet("QLineEdit" "{ background: pink; }")
+                invalid_fields = True
+            elif isinstance(field, QComboBox) and field.currentText()[0] == "-":
+                field.setStyleSheet("QComboBox" "{ background: pink; }")
+                invalid_fields = True
+            elif isinstance(field, dict):
+                invalid_fields = self.check_invalid(field)
+            elif isinstance(field, QLineEdit):
+                field.setStyleSheet("QLineEdit" "{ background: lightgreen; }")
+            elif isinstance(field, QComboBox):
+                field.setStyleSheet("QComboBox" "{ background: lightgreen; }")
+
+        return invalid_fields
